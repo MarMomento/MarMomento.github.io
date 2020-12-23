@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search> 
+  
+  
+    
+    <entry>
+      <title>VSCode常用快捷键</title>
+      <link href="2020/04/09/Editors/VSCode%E5%B8%B8%E7%94%A8%E5%BF%AB%E6%8D%B7%E9%94%AE/"/>
+      <url>2020/04/09/Editors/VSCode%E5%B8%B8%E7%94%A8%E5%BF%AB%E6%8D%B7%E9%94%AE/</url>
+      
+        <content type="html"><![CDATA[<h1 id="vscode常用快捷键"><a class="markdownIt-Anchor" href="#vscode常用快捷键"></a> VSCode常用快捷键</h1><h2 id="1-光标移动"><a class="markdownIt-Anchor" href="#1-光标移动"></a> 1. 光标移动</h2><table><thead><tr><th>作用</th><th>快捷键</th></tr></thead><tbody><tr><td>多光标</td><td>Ctrl + Alt + Arrow</td></tr><tr><td>选中附近单词与重复内容</td><td>(Ctrl + D )  * number</td></tr><tr><td>选中多行内容并在末尾添加光标</td><td>Alt + Shift + i</td></tr></tbody></table><h2 id="2-文件间移动"><a class="markdownIt-Anchor" href="#2-文件间移动"></a> 2. 文件间移动</h2><table><thead><tr><th>作用</th><th>快捷键</th></tr></thead><tbody><tr><td>展示最近打开的文件列表</td><td>Ctrl + P</td></tr><tr><td>在新的编辑器中打开</td><td>Ctrl + P，Ctrl + Enter</td></tr><tr><td>跳转到指定行</td><td>Ctrl + G</td></tr><tr><td>跳转到指定功能</td><td>Ctrl + Shift + O</td></tr><tr><td>typescript 跳转到定义处</td><td>F12</td></tr><tr><td>跳转到函数实现处</td><td>Ctrl + F12</td></tr></tbody></table><h2 id="3-代码"><a class="markdownIt-Anchor" href="#3-代码"></a> 3. 代码</h2><table><thead><tr><th>作用</th><th>快捷键</th></tr></thead><tbody><tr><td>折叠/展开</td><td>Ctrl + Shift + [ / ]</td></tr><tr><td>全部折叠</td><td>Ctrl + K，Ctrl + 0</td></tr></tbody></table><h2 id="4-搜索"><a class="markdownIt-Anchor" href="#4-搜索"></a> 4. 搜索</h2><table><thead><tr><th>作用</th><th>快捷键</th></tr></thead><tbody><tr><td>文件内搜索内容,并跳转</td><td>Ctrl + F，Shift + Enter</td></tr><tr><td>大小写敏感</td><td>Alt + C</td></tr><tr><td>单词全匹配</td><td>Alt + W</td></tr><tr><td>正则</td><td>Alt + R</td></tr><tr><td>替换</td><td>Ctrl + H</td></tr><tr><td>全部替换</td><td>Ctrl + Alt + Enter</td></tr><tr><td>多文件搜索</td><td>Ctrl + Shift + F</td></tr></tbody></table><h2 id="5-终端"><a class="markdownIt-Anchor" href="#5-终端"></a> 5. 终端</h2><table><thead><tr><th>作用</th><th>快捷键</th></tr></thead><tbody><tr><td>显示/隐藏终端</td><td>Ctrl + `   /   Ctrl + J</td></tr><tr><td>新建终端</td><td>Ctrl + Shift + `</td></tr><tr><td>拆分终端</td><td>Ctrl + Shift + 5</td></tr><tr><td>终端间的切换</td><td>Alt + Arrow</td></tr></tbody></table><h2 id="6-编辑器"><a class="markdownIt-Anchor" href="#6-编辑器"></a> 6. 编辑器</h2><table><thead><tr><th>作用</th><th>快捷键</th></tr></thead><tbody><tr><td>拆分编辑器</td><td>Ctrl + \</td></tr><tr><td>切换编辑器</td><td>Ctrl + number</td></tr><tr><td>调整文件所在的编辑器</td><td>Ctrl + Alt + Arrow</td></tr></tbody></table><h2 id="7-工作区"><a class="markdownIt-Anchor" href="#7-工作区"></a> 7. 工作区</h2><table><thead><tr><th>作用</th><th>快捷键</th></tr></thead><tbody><tr><td>放大/缩小</td><td>Ctrl + +/-</td></tr></tbody></table>]]></content>
+      
+      
+      <categories>
+          
+          <category> Editors </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> VSCode </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+  
+  
+</search>
