@@ -1,0 +1,365 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>渲染流程 | 记录成长的每一步</title><meta name="keywords" content="浏览器,JavaScript,HTML,CSS"><meta name="author" content="Momento"><meta name="copyright" content="Momento"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="渲染流程 HTML, CSS, JavaScript是如何变成页面的？ 由于渲染过程过于复杂，所以渲染模块在执行过程中会被划分为很多子阶段，输入的HTML，CSS，JavaScript经过这些子阶段，最后输出像素。这样的一个处理流程称为渲染流水线。 按照渲染的时间顺序划分，可将渲染流水线划分为：  构建DOM树（DOM） 样式计算（Style） 布局阶段（Layout） 分层（Layer） 绘制">
+<meta property="og:type" content="article">
+<meta property="og:title" content="渲染流程">
+<meta property="og:url" content="http://example.com/2020/12/29/Browser/%E6%B8%B2%E6%9F%93%E6%B5%81%E7%A8%8B/index.html">
+<meta property="og:site_name" content="记录成长的每一步">
+<meta property="og:description" content="渲染流程 HTML, CSS, JavaScript是如何变成页面的？ 由于渲染过程过于复杂，所以渲染模块在执行过程中会被划分为很多子阶段，输入的HTML，CSS，JavaScript经过这些子阶段，最后输出像素。这样的一个处理流程称为渲染流水线。 按照渲染的时间顺序划分，可将渲染流水线划分为：  构建DOM树（DOM） 样式计算（Style） 布局阶段（Layout） 分层（Layer） 绘制">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg">
+<meta property="article:published_time" content="2020-12-29T15:55:52.177Z">
+<meta property="article:modified_time" content="2021-03-19T06:54:01.035Z">
+<meta property="article:author" content="Momento">
+<meta property="article:tag" content="浏览器">
+<meta property="article:tag" content="JavaScript">
+<meta property="article:tag" content="HTML">
+<meta property="article:tag" content="CSS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2020/12/29/Browser/%E6%B8%B2%E6%9F%93%E6%B5%81%E7%A8%8B/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.css" media="print" onload="this.media='all'"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容：${query}"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '天',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: {"chs_to_cht":"你已切换为繁体","cht_to_chs":"你已切换为简体","day_to_night":"你已切换为深色模式","night_to_day":"你已切换为浅色模式","bgLight":"#49b1f5","bgDark":"#121212","position":"top-right"},
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}
+
+// https://stackoverflow.com/questions/16839698/jquery-getscript-alternative-in-native-javascript
+const getScript = url => new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.async = true
+  script.onerror = reject
+  script.onload = script.onreadystatechange = function() {
+    const loadState = this.readyState
+    if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+    script.onload = script.onreadystatechange = null
+    resolve()
+  }
+  document.head.appendChild(script)
+})</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2021-03-19 14:54:01'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}const fontSizeVal = saveToLocal.get('global-font-size')
+if (fontSizeVal !== undefined) {
+  document.documentElement.style.setProperty('--global-font-size', fontSizeVal + 'px')
+}})()</script><meta name="generator" content="Hexo 5.3.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="/img/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">40</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">37</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">10</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div></div></div></div><div id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">记录成长的每一步</a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友情链接</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">渲染流程</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2020-12-29T15:55:52.177Z" title="发表于 2020-12-29 23:55:52">2020-12-29</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-03-19T06:54:01.035Z" title="更新于 2021-03-19 14:54:01">2021-03-19</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">2.4k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="渲染流程"><a class="markdownIt-Anchor" href="#渲染流程"></a> 渲染流程</h1>
+<p><strong>HTML, CSS, JavaScript是如何变成页面的？</strong></p>
+<p>由于渲染过程过于复杂，所以渲染模块在执行过程中会被划分为很多子阶段，输入的HTML，CSS，JavaScript经过这些子阶段，最后输出像素。这样的一个处理流程称为<strong>渲染流水线</strong>。</p>
+<p>按照渲染的时间顺序划分，可将渲染流水线划分为：</p>
+<ol>
+<li>构建DOM树（DOM）</li>
+<li>样式计算（Style）</li>
+<li>布局阶段（Layout）</li>
+<li>分层（Layer）</li>
+<li>绘制（Paint）</li>
+<li>分块（tiles）</li>
+<li>光栅化（raster）</li>
+<li>合成和显示（display）</li>
+</ol>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144213.png" alt="image-20201102214027828" style="zoom:80%;" />
+<h2 id="一-构建dom树dom"><a class="markdownIt-Anchor" href="#一-构建dom树dom"></a> 一、构建DOM树（DOM）</h2>
+<p>浏览器是无法直接理解和使用HTML的，所以需要将HTML转换为浏览器能理解的结构——<strong>DOM树</strong>。</p>
+<h3 id="1-input"><a class="markdownIt-Anchor" href="#1-input"></a> 1. Input</h3>
+<p>HTML文件</p>
+<h3 id="2-handle"><a class="markdownIt-Anchor" href="#2-handle"></a> 2. Handle</h3>
+<p>HTML解析器解析</p>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144215.png" alt="image-20201102112721683" style="zoom:50%;" />
+<h3 id="3-output"><a class="markdownIt-Anchor" href="#3-output"></a> 3. Output</h3>
+<p>DOM树（DOM树是保存在内存中的树状结构,document）</p>
+<h2 id="二-样式计算recalculate-style"><a class="markdownIt-Anchor" href="#二-样式计算recalculate-style"></a> 二、样式计算（Recalculate Style）</h2>
+<p>同样的，浏览器是无法理解纯文本的CSS样式的，所以渲染引擎会把CSS转化为可以理解的styleSheets，并计算出DOM节点中每个元素的具体样式。</p>
+<p>计算的目的是为了计算出DOM节点中每个元素的具体样式。</p>
+<h3 id="1-input-2"><a class="markdownIt-Anchor" href="#1-input-2"></a> 1. Input</h3>
+<ol>
+<li><code>&lt;link ref=&quot;stylesheet&quot; href=&quot;&quot;&gt;</code></li>
+<li><code>&lt;style&gt;&lt;/style&gt;</code></li>
+<li><code>style=&quot;&quot;</code></li>
+</ol>
+<h3 id="2-handle-2"><a class="markdownIt-Anchor" href="#2-handle-2"></a> 2. Handle</h3>
+<ol>
+<li>
+<p>把CSS转换为浏览器能够理解的结构</p>
+<p>浏览器会把CSS转换为浏览器能够理解的结构——<strong>styleSheets</strong>（document.styleSheets）</p>
+<p>注：也有人将styleSheet称之为CSSOM。</p>
+</li>
+<li>
+<p>转换样式表中的属性值，使其标准化</p>
+<p>将所有属性值转为渲染引擎容易理解的、标准化的计算值。如颜色值会转为rgb或rgba形式</p>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144214.png" alt="image-20201102111337794" style="zoom: 67%;" />
+</li>
+<li>
+<p>计算出DOM树中每个节点的具体样式：</p>
+<p>根据CSS的<strong>继承规则</strong>和<strong>层叠规则</strong>计算出DOM树中每个节点的样式属性。</p>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144225.png" alt="image-20201102220728216" style="zoom: 67%;" />
+</li>
+</ol>
+<h3 id="3-output-2"><a class="markdownIt-Anchor" href="#3-output-2"></a> 3. Output</h3>
+<p>每个DOM节点的样式，保存在ComputedStyle中</p>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144216.png" alt="image-20201102112825987" style="zoom:67%;" />
+<h2 id="三-布局阶段layout"><a class="markdownIt-Anchor" href="#三-布局阶段layout"></a> 三、布局阶段（Layout）</h2>
+<p>计算出DOM树中可⻅元素的⼏何位置信息。</p>
+<p>Chrome在布局阶段需要完成两个任务： <strong>创建布局树</strong>和<strong>布局计算</strong>。</p>
+<h3 id="1-创建布局树"><a class="markdownIt-Anchor" href="#1-创建布局树"></a> 1. 创建布局树</h3>
+<ul>
+<li>
+<p>Input：DOM树，ComputedStyle</p>
+</li>
+<li>
+<p>Handle：</p>
+<p>遍历DOM树中的所有可⻅节点， 并把这些节点加到布局树中，⽽不可⻅的节点（如head标签的节点，display:none）会被布局树忽略掉</p>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144218.png" alt="image-20201102113838882" style="zoom:67%;" />
+</li>
+<li>
+<p>Output：⼀棵只包含可⻅元素布局树（LayoutTree）</p>
+</li>
+</ul>
+<h3 id="2-布局计算"><a class="markdownIt-Anchor" href="#2-布局计算"></a> 2. 布局计算</h3>
+<ul>
+<li>
+<p>Input：布局树（LayoutTree）</p>
+</li>
+<li>
+<p>Handle：计算布局树节点的坐标位置，并重新写回布局树</p>
+</li>
+<li>
+<p>Output：布局树（LayoutTree）</p>
+</li>
+</ul>
+<blockquote>
+<p>布局阶段有⼀个不合理的地⽅：在执⾏布局操作的时候， 会把布局计算的结果重新写回布局树中， 所以布局树既是输⼊内容也是输出内容，并没有清晰地将输⼊内容和输出内容区分开来。针对这个问题， Chrome团队正在重构布局代码， 下⼀代布局系统叫<strong>LayoutNG</strong>， 试图更清晰地分离输⼊和输出， 从⽽让新设计的布局算法更加简单。</p>
+</blockquote>
+<p>注：也有人将LayoutTree称之为RenderTree，但两者之间还是有些差别的。</p>
+<h2 id="四-分层layer"><a class="markdownIt-Anchor" href="#四-分层layer"></a> 四、分层（Layer）</h2>
+<p>⻚⾯中有很多复杂的效果，如⼀些<strong>复杂的3D变换、⻚⾯滚动，或者使⽤z-index做z轴排序</strong>等。</p>
+<p>为了更加⽅便地实现这些效果，渲染引擎还需要为特定的节点⽣成专⽤的图层，并⽣成⼀棵对应的<strong>图层树（LayerTree）</strong></p>
+<p>Chrome的“开发者⼯具”，选择“Layers”标签，就可以可视化⻚⾯的分层情况。</p>
+<h3 id="1-input-3"><a class="markdownIt-Anchor" href="#1-input-3"></a> 1. Input</h3>
+<p>布局树（LayoutTree）</p>
+<h3 id="2-handle-3"><a class="markdownIt-Anchor" href="#2-handle-3"></a> 2. Handle</h3>
+<p>为特定的节点生成专用的图层。</p>
+<p>并不是布局树的每个节点都是⼀个图层的，如果⼀个节点没有对应的层，那么这个节点就从属于⽗节点的图层。最终每⼀个节点都会直接或者间接地从属于某⼀个层。</p>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144217.png" alt="image-20201102113104272" style="zoom: 67%;" />
+<p>当满足以下任意一条特性时，就会为该节点生成专用的图层：</p>
+<ul>
+<li>
+<p>拥有层叠上下⽂属性的元素会被提升为单独的⼀层。如position的fixed，absolute以及z-index等。</p>
+</li>
+<li>
+<p>需要剪裁（clip）的地⽅也会被创建为图层，如文字内容超出了限定区域就会创建图层，同时滚动条也会创建一个图层。</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">div</span> <span class="attr">style</span>=<span class="string">&quot;width: 200px;height: 200px;overflow: auto;background: gray;&quot;</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">p</span>&gt;</span>Lorem ipsum dolor sit amet consectetur adipisicing elit. Asperiores quia nemo assumenda, repellendus voluptatibus suscipit recusandae corporis odit facilis atque porro aliquid, ea iste molestiae magnam unde, ut nostrum molestias!</span><br><span class="line">  <span class="tag">&lt;/<span class="name">p</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="3-output-3"><a class="markdownIt-Anchor" href="#3-output-3"></a> 3. Output</h3>
+<p>一颗对应的图层树（LayerTree）</p>
+<h2 id="五-绘制paint"><a class="markdownIt-Anchor" href="#五-绘制paint"></a> 五、绘制（Paint）</h2>
+<p>渲染引擎会对图层树（LayerTree）中的每个图层⽣成<strong>绘制列表</strong>，并将其提交到<strong>合成线程</strong>。</p>
+<p>绘制列表只是⽤来记录绘制顺序和绘制指令的列表，⽽实际上绘制操作是由<strong>渲染引擎中的合成线程</strong>来完成的。</p>
+<p>同样的，Chrome的“开发者⼯具”，选择“Layers”标签，可以查看绘制指令。</p>
+<h3 id="1-input-4"><a class="markdownIt-Anchor" href="#1-input-4"></a> 1. Input</h3>
+<p>图层树（LayerTree）</p>
+<h3 id="2-handle-4"><a class="markdownIt-Anchor" href="#2-handle-4"></a> 2. Handle</h3>
+<ol>
+<li>把一个图层的绘制拆成很多小的<strong>绘制指令</strong></li>
+<li>将这些绘制指令按顺序组成一个待绘制列表</li>
+</ol>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144219.png" alt="image-20201102115635248" style="zoom: 50%;" />
+<h3 id="3-output-4"><a class="markdownIt-Anchor" href="#3-output-4"></a> 3. Output</h3>
+<p>生成<strong>待绘制列表</strong>，并<strong>将待绘制列表提交给合成线程</strong>。</p>
+<h2 id="六-分块tiles"><a class="markdownIt-Anchor" href="#六-分块tiles"></a> 六、分块（tiles）</h2>
+<p>当绘制列表准备好之后，渲染进程的<strong>主线程</strong>会把该绘制列表<strong>提交（commit）<strong>给渲染进程中的</strong>合成线程</strong>。</p>
+<p>通常一个页面可能很大，但是用户通过屏幕只能看到其中的一小块，我们把通过屏幕可以看到的这个部分叫做<strong>视口（物理视口）</strong>。</p>
+<p>在有些情况下，有的图层很⼤，⽐如有的⻚⾯要滚动好久才能滚动到底部，但是通过视⼝，⽤⼾只能看到⻚⾯的很⼩⼀部分，所以在这种情况下，要绘制出所有图层内容的话，就会产⽣太⼤的开销，⽽且也没有必要。</p>
+<p>基于这个原因，合成线程会<strong>将图层划分为图块（tile）</strong>。通常这些图块的⼤⼩是256x256或者512x512。</p>
+<h3 id="1-input-5"><a class="markdownIt-Anchor" href="#1-input-5"></a> 1. Input</h3>
+<p>待绘制列表（一个绘制列表就是一个layer）</p>
+<h3 id="2-handle-5"><a class="markdownIt-Anchor" href="#2-handle-5"></a> 2. Handle</h3>
+<p>将图层划分成图块</p>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144220.png" alt="image-20201102211027088" style="zoom:80%;" />
+<h3 id="3-output-5"><a class="markdownIt-Anchor" href="#3-output-5"></a> 3. Output</h3>
+<p>图层对应的图块</p>
+<h2 id="七-光栅化raster"><a class="markdownIt-Anchor" href="#七-光栅化raster"></a> 七、光栅化（raster）</h2>
+<p>所谓栅格化就是指将图块转换为位图。所以栅格化执行的最小单位就是图块。</p>
+<p>渲染进程维护了一个栅格化的线程池，所有的图块栅格化操作都是在线程池内执行的。</p>
+<p>光栅化就是指在栅格化的过程中，会使用GPU来加速生成位图，所以也可以称之为快速栅格化或GPU栅格化。</p>
+<h3 id="1-input-6"><a class="markdownIt-Anchor" href="#1-input-6"></a> 1. Input</h3>
+<p>图层对应的图块（tiles)</p>
+<h3 id="2-handle-6"><a class="markdownIt-Anchor" href="#2-handle-6"></a> 2. Handle</h3>
+<ul>
+<li><strong>栅格化线程池</strong>内的<strong>栅格化线程</strong>会按照<strong>视口附近的图块优先生成位图</strong></li>
+<li>栅格化过程都会使⽤GPU来加速⽣成位图，⽣成的位图被保存在GPU内存中。（跨进程操作）</li>
+</ul>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144221.png" alt="image-20201102213246253" style="zoom:80%;" />
+<h3 id="3-output-6"><a class="markdownIt-Anchor" href="#3-output-6"></a> 3. Output</h3>
+<p>图层的图块对应的位图，并保存在GPU内存中。</p>
+<p>一旦所有图块都被光栅化，合成线程会生成一个绘制图块的命令（<strong>DrawQuad命令</strong>），然后将该命令提交给<strong>浏览器进程</strong>。</p>
+<h2 id="八-合成和显示"><a class="markdownIt-Anchor" href="#八-合成和显示"></a> 八、合成和显示</h2>
+<p>根据DrawQuad消息⽣成⻚⾯，并显⽰到显⽰器上。</p>
+<h3 id="1-input-7"><a class="markdownIt-Anchor" href="#1-input-7"></a> 1. Input</h3>
+<p>合成线程发过来的DrawQuad命令</p>
+<h3 id="2-handle-7"><a class="markdownIt-Anchor" href="#2-handle-7"></a> 2. Handle</h3>
+<p>浏览器进程里面有一个叫<mark>viz的组件</mark>，用来接收合成线程发过来的DrawQuad命令。</p>
+<p>然后根据DrawQuad命令，将⻚⾯内容绘制到内存中，最后再将内存中的页面显⽰在屏幕上。</p>
+<h3 id="3-output-7"><a class="markdownIt-Anchor" href="#3-output-7"></a> 3. Output</h3>
+<p>显示的页面</p>
+<h2 id="九-相关概念"><a class="markdownIt-Anchor" href="#九-相关概念"></a> 九、相关概念</h2>
+<h4 id="1-重排更新了元素的几何属性"><a class="markdownIt-Anchor" href="#1-重排更新了元素的几何属性"></a> 1. 重排：更新了元素的几何属性</h4>
+<p>修改了元素的几何位置属性，例如width，height等，那么浏览器会触发<strong>重新布局（Layout）</strong>，然后按照渲染流水线执行后序的阶段，这个过程就是重排。</p>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144222.png" alt="image-20201102213125578" style="zoom:80%;" />
+<p>重排需要更新完整的渲染流⽔线，所以<strong>开销也是最⼤</strong>的。</p>
+<p>为什么重排会更新完成的渲染流水线？</p>
+<p>因为修改了元素的几何属性，那么需要重新的样式计算（Recaculate Style），然后重新布局，分层绘制等，也就是重新开始更新渲染流水线。</p>
+<h4 id="2-重绘更新了元素的绘制属性"><a class="markdownIt-Anchor" href="#2-重绘更新了元素的绘制属性"></a> 2. 重绘：更新了元素的绘制属性</h4>
+<p>修改了元素的绘制属性，如background, color等，那么浏览器会触发<strong>重新绘制（Paint）</strong>，也就是跳过Layout，Layer阶段，直接进入绘制阶段(Paint)，然后按照渲染流水线执行后序的阶段，这个过程就是重绘。</p>
+<img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144223.png" alt="image-20201102220341363"  />
+<p>重绘省去了布局(Layout)和分层阶段(Layer)，所以<strong>执⾏效率会⽐重排操作要⾼⼀些</strong>。</p>
+<p>为什么重绘会省去布局和分层阶段？</p>
+<p>因为修改了元素的背景颜色等属性，那么需要重新的样式计算（Recaculte Style），然而元素的几何位置等属性并没有变，同时Layout和layer阶段是依赖于元素的几何位置信息的，所以完全可以跳过Layout和Layer阶段，直接进入Paint阶段，然后执行后序流程。</p>
+<h4 id="3-合成直接合成"><a class="markdownIt-Anchor" href="#3-合成直接合成"></a> 3. 合成：直接合成</h4>
+<p>修改了既不要重新布局也不要重新绘制的属性，会跳过Layout，Layer，Paint阶段，直接在渲染进程的非主线程上执行合成的操作，这个过程就是直接合成。</p>
+<p><img src="https://gitee.com/MarMomento/image/raw/master/img/20210319144224.png" alt="image-20201102220552144" /></p>
+<p>在⾮主线程上合成，并没有占⽤主线程的资源，另外也避开了布局和绘制两个⼦阶段，所以相对于重绘和重排，合成能⼤⼤提升绘制效率。</p>
+<h2 id="参考链接"><a class="markdownIt-Anchor" href="#参考链接"></a> 参考链接</h2>
+<ul>
+<li>李兵《浏览器工作原理与实践》：<a target="_blank" rel="noopener" href="https://time.geekbang.org/column/intro/100033601">https://time.geekbang.org/column/intro/100033601</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">Momento</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2020/12/29/Browser/%E6%B8%B2%E6%9F%93%E6%B5%81%E7%A8%8B/">http://example.com/2020/12/29/Browser/%E6%B8%B2%E6%9F%93%E6%B5%81%E7%A8%8B/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">记录成长的每一步</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E6%B5%8F%E8%A7%88%E5%99%A8/">浏览器</a><a class="post-meta__tags" href="/tags/JavaScript/">JavaScript</a><a class="post-meta__tags" href="/tags/HTML/">HTML</a><a class="post-meta__tags" href="/tags/CSS/">CSS</a></div><div class="post_share"><div class="social-share" data-image="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2021/02/21/Editors/IDEA%E5%B8%B8%E7%94%A8%E5%BF%AB%E6%8D%B7%E9%94%AE/"><img class="prev-cover" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">IDEA常用快捷键</div></div></a></div><div class="next-post pull-right"><a href="/2020/12/29/JavaScript/%E6%89%8B%E5%86%99call-apply-bind/"><img class="next-cover" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">手写call-apply-bind</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span> 相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2021/03/16/Browser/浏览器中的JavaScript执行机制/" title="浏览器中的JavaScript执行机制"><img class="cover" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2021-03-16</div><div class="title">浏览器中的JavaScript执行机制</div></div></a></div><div><a href="/2020/12/29/Browser/Chrome架构进化史/" title="Chrome架构进化史"><img class="cover" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-12-29</div><div class="title">Chrome架构进化史</div></div></a></div><div><a href="/2020/12/26/JavaScript/DOM常见兼容性封装/" title="DOM常见兼容性封装"><img class="cover" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-12-26</div><div class="title">DOM常见兼容性封装</div></div></a></div><div><a href="/2020/12/27/JavaScript/V8是如何实现asyncawait的/" title="V8是如何实现async/await的?"><img class="cover" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-12-27</div><div class="title">V8是如何实现async/await的?</div></div></a></div><div><a href="/2020/12/27/JavaScript/V8是如何实现回调函数的/" title="V8是如何实现回调函数的?"><img class="cover" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-12-27</div><div class="title">V8是如何实现回调函数的?</div></div></a></div><div><a href="/2020/12/27/JavaScript/V8是如何实现微任务的/" title="V8是如何实现微任务的?"><img class="cover" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" alt="cover"><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2020-12-27</div><div class="title">V8是如何实现微任务的?</div></div></a></div></div></div></div><div class="aside_content" id="aside_content"><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="card-content"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B8%B2%E6%9F%93%E6%B5%81%E7%A8%8B"><span class="toc-text"> 渲染流程</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80-%E6%9E%84%E5%BB%BAdom%E6%A0%91dom"><span class="toc-text"> 一、构建DOM树（DOM）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-input"><span class="toc-text"> 1. Input</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-handle"><span class="toc-text"> 2. Handle</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-output"><span class="toc-text"> 3. Output</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C-%E6%A0%B7%E5%BC%8F%E8%AE%A1%E7%AE%97recalculate-style"><span class="toc-text"> 二、样式计算（Recalculate Style）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-input-2"><span class="toc-text"> 1. Input</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-handle-2"><span class="toc-text"> 2. Handle</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-output-2"><span class="toc-text"> 3. Output</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89-%E5%B8%83%E5%B1%80%E9%98%B6%E6%AE%B5layout"><span class="toc-text"> 三、布局阶段（Layout）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E5%88%9B%E5%BB%BA%E5%B8%83%E5%B1%80%E6%A0%91"><span class="toc-text"> 1. 创建布局树</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%B8%83%E5%B1%80%E8%AE%A1%E7%AE%97"><span class="toc-text"> 2. 布局计算</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B-%E5%88%86%E5%B1%82layer"><span class="toc-text"> 四、分层（Layer）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-input-3"><span class="toc-text"> 1. Input</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-handle-3"><span class="toc-text"> 2. Handle</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-output-3"><span class="toc-text"> 3. Output</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94-%E7%BB%98%E5%88%B6paint"><span class="toc-text"> 五、绘制（Paint）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-input-4"><span class="toc-text"> 1. Input</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-handle-4"><span class="toc-text"> 2. Handle</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-output-4"><span class="toc-text"> 3. Output</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD-%E5%88%86%E5%9D%97tiles"><span class="toc-text"> 六、分块（tiles）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-input-5"><span class="toc-text"> 1. Input</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-handle-5"><span class="toc-text"> 2. Handle</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-output-5"><span class="toc-text"> 3. Output</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83-%E5%85%89%E6%A0%85%E5%8C%96raster"><span class="toc-text"> 七、光栅化（raster）</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-input-6"><span class="toc-text"> 1. Input</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-handle-6"><span class="toc-text"> 2. Handle</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-output-6"><span class="toc-text"> 3. Output</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB-%E5%90%88%E6%88%90%E5%92%8C%E6%98%BE%E7%A4%BA"><span class="toc-text"> 八、合成和显示</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-input-7"><span class="toc-text"> 1. Input</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-handle-7"><span class="toc-text"> 2. Handle</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-output-7"><span class="toc-text"> 3. Output</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D-%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5"><span class="toc-text"> 九、相关概念</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1-%E9%87%8D%E6%8E%92%E6%9B%B4%E6%96%B0%E4%BA%86%E5%85%83%E7%B4%A0%E7%9A%84%E5%87%A0%E4%BD%95%E5%B1%9E%E6%80%A7"><span class="toc-text"> 1. 重排：更新了元素的几何属性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-%E9%87%8D%E7%BB%98%E6%9B%B4%E6%96%B0%E4%BA%86%E5%85%83%E7%B4%A0%E7%9A%84%E7%BB%98%E5%88%B6%E5%B1%9E%E6%80%A7"><span class="toc-text"> 2. 重绘：更新了元素的绘制属性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3-%E5%90%88%E6%88%90%E7%9B%B4%E6%8E%A5%E5%90%88%E6%88%90"><span class="toc-text"> 3. 合成：直接合成</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-text"> 参考链接</span></a></li></ol></li></ol></div></div></div></div></div></main><footer id="footer" style="background-image: url(https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg)"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By Momento</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="font-plus" type="button" title="放大字体"><i class="fas fa-plus"></i></button><button id="font-minus" type="button" title="缩小字体"><i class="fas fa-minus"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div id="local-search"><div class="search-dialog"><div class="search-dialog__title" id="local-search-title">本地搜索</div><div id="local-input-panel"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div></div><hr/><div id="local-search-results"></div><span class="search-close-button"><i class="fas fa-times"></i></span></div><div id="search-mask"></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.js"></script><script src="/js/search/local-search.js"></script><script>var preloader = {
+  endLoading: () => {
+    document.body.style.overflow = 'auto';
+    document.getElementById('loading-box').classList.add("loaded")
+  },
+  initLoading: () => {
+    document.body.style.overflow = '';
+    document.getElementById('loading-box').classList.remove("loaded")
+
+  }
+}
+window.addEventListener('load',()=> {preloader.endLoading()})</script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script></div></body></html>
